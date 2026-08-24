@@ -5,7 +5,7 @@ import MonitorBoard from './components/MonitorBoard';
 import Heatmap from './components/Heatmap';
 import StatCards from './components/StatCards';
 import DayDrawer from './components/DayDrawer';
-import { api } from './lib/api';
+import { api, isTauri } from './lib/api';
 import { exportHeatmap, exportSubmissionsCsv } from './lib/export';
 import { currentYear, formatDateTime, today } from './lib/date';
 import { METRICS, PLATFORM_META, PLATFORM_ORDER } from './lib/platforms';
@@ -13,6 +13,18 @@ import type { CardPeriod, DayDetail, GroupInfo, Metric, Platform, Snapshot, Summ
 
 type Page = 'overview' | 'summary' | 'monitor' | 'export' | 'data' | 'settings' | 'about' | Platform;
 type TimeKind = 'until' | 'year' | 'custom';
+
+const HASH_PAGES: Page[] = ['overview', 'summary', 'monitor', 'export', 'data', 'settings', 'about', ...PLATFORM_ORDER];
+
+function pageFromHash(): Page {
+  const h = decodeURIComponent(window.location.hash.replace(/^#\/?/, '')).trim();
+  if (!h) return 'overview';
+  return (HASH_PAGES as string[]).includes(h) ? (h as Page) : 'overview';
+}
+
+function hashFromPage(p: Page): string {
+  return p === 'overview' ? '#/' : `#/${p}`;
+}
 
 const emptySnapshot: Snapshot = {
   stats: { solved: 0, accepted_submissions: 0, active_days: 0, longest_streak: 0, current_streak: 0, peak_day: null, peak_count: 0 },
@@ -29,7 +41,6 @@ function scopeRange(kind: TimeKind, year: number, customStart: string, customEnd
 }
 
 export default function App() {
-  const [page, setPage] = useState<Page>('overview');
   const [timeKind, setTimeKind] = useState<TimeKind>('until');
   const [year, setYear] = useState(currentYear());
   const [customStart, setCustomStart] = useState('');
@@ -47,10 +58,30 @@ export default function App() {
   const [dayDetail, setDayDetail] = useState<DayDetail | null>(null);
   const [dayLoading, setDayLoading] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [page, setPage] = useState<Page>(pageFromHash);
+
+  // TOOLS 区（导出/数据源/账号绑定/关于）仅管理员登录后可见
+  useEffect(() => {
+    if (isTauri) { setIsAdmin(true); return; }
+    api.verifyAdmin().then((r) => setIsAdmin(r.admin)).catch(() => setIsAdmin(false));
+  }, []);
+
+  // hash 与页面状态保持同步（支持深链接与浏览器前进后退）
+  useEffect(() => {
+    const onHash = () => setPage(pageFromHash());
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
 
   const currentUser = users.find((u) => u.id === currentUserId) || null;
   const selectedPlatform: Platform | null = PLATFORM_ORDER.includes(page as Platform) ? page as Platform : null;
-  const changePage = (p: Page) => { setPage(p); setNavOpen(false); };
+  const changePage = (p: Page) => {
+    setPage(p);
+    const want = hashFromPage(p);
+    if (window.location.hash !== want) window.location.hash = want;
+    setNavOpen(false);
+  };
   const range = useMemo(() => scopeRange(timeKind, year, customStart, customEnd), [timeKind, year, customStart, customEnd]);
   const accountMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -126,12 +157,14 @@ export default function App() {
   };
 
   return <div className="app-shell">
-    <Sidebar page={page} onChange={changePage} users={users} groups={groups} currentUserId={currentUserId} onChangeUser={setCurrentUserId} open={navOpen} onClose={() => setNavOpen(false)} />
+    <Sidebar page={page} onChange={changePage} users={users} groups={groups} currentUserId={currentUserId} onChangeUser={setCurrentUserId} open={navOpen} onClose={() => setNavOpen(false)} isAdmin={isAdmin} />
     <main className="main">
       <div className="mobile-topbar">
         <button className="icon-btn" onClick={() => setNavOpen(true)} aria-label="打开菜单"><Menu size={18} /></button>
         <strong>OJ Insight</strong>
       </div>
+      {!isAdmin && (page === 'export' || page === 'data' || page === 'settings' || page === 'about') ? <AdminRequired /> :
+      <>
       {page === 'summary' ? <SummaryPage /> :
        page === 'monitor' ? <MonitorPage /> :
        page === 'settings' ? <SettingsPage statuses={statuses} /> :
@@ -139,6 +172,7 @@ export default function App() {
        page === 'export' ? <ExportPage accountMap={accountMap} metric={metric} userId={currentUserId} userName={currentUser?.name || ''} /> :
        page === 'about' ? <AboutPage /> :
        <DashboardPage platform={selectedPlatform} timeKind={timeKind} setTimeKind={setTimeKind} year={year} setYear={setYear} customStart={customStart} setCustomStart={setCustomStart} customEnd={customEnd} setCustomEnd={setCustomEnd} range={range} metric={metric} setMetric={setMetric} snapshot={snapshot} loading={loading} syncing={syncing} syncProgress={syncProgress} onSync={() => selectedPlatform ? syncOne(selectedPlatform) : syncAll()} onDay={openDay} onPlatform={(p)=>setPage(p)} userName={currentUser?.name || ''} />}
+      </>}
     </main>
     <DayDrawer detail={dayDetail} loading={dayLoading} onClose={() => setDayDetail(null)} />
     {toast && <div className="toast">{toast}</div>}
@@ -392,6 +426,15 @@ function MonitorPage() {
     <header className="topbar"><div><small>QUEUE MONITOR</small><h1>监控队列</h1><p>实时查看各平台同步队列与全部出站请求日志，每 2 秒自动刷新。</p></div></header>
     <MonitorBoard />
   </>;
+}
+
+function AdminRequired() {
+  return <section className="panel admin-required">
+    <ShieldCheck size={30} />
+    <h2>该功能区仅对管理员开放</h2>
+    <p>导出、数据源、账号绑定与关于页面需要登录管理员账号后使用。</p>
+    <a className="primary" href="#/admin"><ShieldCheck size={15} />前往管理后台登录</a>
+  </section>;
 }
 
 function syncStatusLabel(status?: string) {

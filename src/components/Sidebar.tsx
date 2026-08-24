@@ -4,7 +4,7 @@ import type { GroupInfo, Platform, UserLite } from '../types';
 
 type Page = 'overview' | 'summary' | 'monitor' | 'export' | 'data' | 'settings' | 'about' | Platform;
 
-export default function Sidebar({ page, onChange, users, groups, currentUserId, onChangeUser, open, onClose }: {
+export default function Sidebar({ page, onChange, users, groups, currentUserId, onChangeUser, open, onClose, isAdmin }: {
   page: Page;
   onChange: (page: Page) => void;
   users: UserLite[];
@@ -13,6 +13,7 @@ export default function Sidebar({ page, onChange, users, groups, currentUserId, 
   onChangeUser: (id: string) => void;
   open?: boolean;
   onClose?: () => void;
+  isAdmin?: boolean;
 }) {
   const groupName = (id: string | null) => groups.find((g) => g.id === id)?.name || '未分组';
   const ordered = [...groups.map((g) => ({ id: g.id as string | null, name: g.name })), { id: null, name: '未分组' }];
@@ -50,11 +51,14 @@ export default function Sidebar({ page, onChange, users, groups, currentUserId, 
               <span className="oj-dot" style={{ background: PLATFORM_META[p].accent }} />{PLATFORM_META[p].name}
             </button>
           ))}
-          <div className="nav-title">TOOLS</div>
-          <button className={page === 'export' ? 'active' : ''} onClick={() => go('export')}><Download size={17} />导出</button>
-          <button className={page === 'data' ? 'active' : ''} onClick={() => go('data')}><Database size={17} />数据源</button>
-          <button className={page === 'settings' ? 'active' : ''} onClick={() => go('settings')}><Settings2 size={17} />账号绑定</button>
-          <button className={page === 'about' ? 'active' : ''} onClick={() => go('about')}><CircleHelp size={17} />关于</button>
+          {isAdmin && <>
+            <div className="nav-title">TOOLS</div>
+            <button className={page === 'export' ? 'active' : ''} onClick={() => go('export')}><Download size={17} />导出</button>
+            <button className={page === 'data' ? 'active' : ''} onClick={() => go('data')}><Database size={17} />数据源</button>
+            <button className={page === 'settings' ? 'active' : ''} onClick={() => go('settings')}><Settings2 size={17} />账号绑定</button>
+            <button className={page === 'about' ? 'active' : ''} onClick={() => go('about')}><CircleHelp size={17} />关于</button>
+          </>}
+          {!isAdmin && <div className="nav-title">TOOLS · 仅管理员</div>}
         </nav>
         <div className="sidebar-foot">
           <a href="#/admin" onClick={onClose}><ShieldCheck size={13} /> 管理后台</a>

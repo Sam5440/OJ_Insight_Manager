@@ -224,6 +224,8 @@ async function handleAdmin(req, res, urlPath, query, body) {
     case 'POST /api/admin/logout':
       auth.logout(token);
       return ok(res, null);
+    case 'GET /api/admin/verify':
+      return ok(res, { username: store.data.auth.username });
     case 'GET /api/admin/overview':
       return ok(res, {
         username: store.data.auth.username,

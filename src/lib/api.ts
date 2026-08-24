@@ -62,6 +62,7 @@ const LOCAL_USER: UserLite = { id: 'local', name: '本地账号', groupId: null 
 
 export const api = isTauri
   ? {
+      verifyAdmin: async () => ({ admin: true as const, username: 'local' }),
       storageInfo: () => invoke<StorageInfo>('get_storage_info'),
       users: async () => ({ groups: [] as GroupInfo[], users: [LOCAL_USER] }),
       getStatuses: (_userId: string) => invoke<SyncStatus[]>('get_sync_statuses'),
@@ -144,6 +145,22 @@ export const api = isTauri
       openExternal: (url: string) => invoke<void>('open_external', { url }),
     }
   : {
+      verifyAdmin: async () => {
+        const token = localStorage.getItem('oj_admin_token');
+        if (!token) return { admin: false as const, username: '' };
+        try {
+          const res = await fetch('/api/admin/verify', { headers: { authorization: `Bearer ${token}` } });
+          if (!res.ok) {
+            // 仅在明确未授权时清除本地凭据；网络波动不清理
+            if (res.status === 401) localStorage.removeItem('oj_admin_token');
+            return { admin: false as const, username: '' };
+          }
+          const d = await res.json();
+          return { admin: true as const, username: d.username || '' };
+        } catch {
+          return { admin: false as const, username: '' };
+        }
+      },
       storageInfo: () => req<StorageInfo>('GET', '/api/storage_info'),
       users: () => req<{ groups: GroupInfo[]; users: UserLite[] }>('GET', '/api/users'),
       getStatuses: (userId: string) => req<SyncStatus[]>('GET', `/api/statuses?${new URLSearchParams({ userId })}`),
