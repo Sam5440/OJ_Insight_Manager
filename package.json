@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "server": "node server/index.mjs",
+    "web": "npm run build && node server/index.mjs --open",
     "tauri": "tauri"
   },
   "dependencies": {

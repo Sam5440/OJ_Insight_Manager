@@ -282,6 +282,12 @@ fn get_day_detail(
 }
 
 #[tauri::command]
+fn get_all_submissions(state: State<'_, AppState>) -> Result<Vec<Submission>, String> {
+    let conn = state.db.lock().map_err(|_| "数据库锁异常".to_string())?;
+    db::get_all_submissions(&*conn)
+}
+
+#[tauri::command]
 fn write_export_file(path: String, data: Vec<u8>) -> Result<(), String> {
     if path.trim().is_empty() {
         return Err("导出路径为空".into());
@@ -293,7 +299,7 @@ fn write_export_file(path: String, data: Vec<u8>) -> Result<(), String> {
 async fn check_for_updates(state: State<'_, AppState>) -> Result<UpdateInfo, String> {
     let value = state
         .client
-        .get("https://api.github.com/repos/Whalica/OJ_Insight/releases/latest")
+        .get("https://api.github.com/repos/sam5440/OJ_Insight_Manager/releases/latest")
         .header("Accept", "application/vnd.github+json")
         .send()
         .await
@@ -320,7 +326,7 @@ async fn check_for_updates(state: State<'_, AppState>) -> Result<UpdateInfo, Str
         release_url: value
             .get("html_url")
             .and_then(|v| v.as_str())
-            .unwrap_or("https://github.com/Whalica/OJ_Insight/releases")
+            .unwrap_or("https://github.com/sam5440/OJ_Insight_Manager/releases")
             .into(),
         update_available,
     })
@@ -340,9 +346,9 @@ fn version_tuple(v: &str) -> (u64, u64, u64) {
 #[tauri::command]
 fn open_external(app: tauri::AppHandle, url: String) -> Result<(), String> {
     let allowed = [
-        "https://github.com/Whalica/OJ_Insight",
-        "https://github.com/Whalica/OJ_Insight/issues",
-        "https://github.com/Whalica/OJ_Insight/releases",
+        "https://github.com/sam5440/OJ_Insight_Manager",
+        "https://github.com/sam5440/OJ_Insight_Manager/issues",
+        "https://github.com/sam5440/OJ_Insight_Manager/releases",
     ];
     if !allowed.iter().any(|prefix| url.starts_with(prefix)) {
         return Err("不允许打开该链接".into());
@@ -407,6 +413,7 @@ pub fn run() {
             clear_all_records,
             get_snapshot,
             get_day_detail,
+            get_all_submissions,
             write_export_file,
             check_for_updates,
             open_external

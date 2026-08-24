@@ -1,8 +1,13 @@
-# OJ Insight
+# OJ Insight Manager
 
 **Unified Online Judge statistics & visualization.**
 
+> **基于原仓库改造**：本项目基于 [Whalica/OJ_Insight](https://github.com/Whalica/OJ_Insight)（v0.2.0）进行二次开发，感谢原作者 Whalica。
+> 本仓库 [sam5440/OJ_Insight_Manager](https://github.com/sam5440/OJ_Insight_Manager) 在原版基础上新增：浏览器 Web 运行模式、多用户与管理后台（用户组 / 平台绑定 / 自动同步计划）、全站汇总用户卡片、做题记录 CSV 导出、共享限流计时器与监控队列等能力，详见下方功能列表。原仓库的桌面 Tauri 功能全部保留。
+
 OJ Insight v0.2.0 是一个 Windows / macOS 本地优先桌面面板，把 Codeforces、AtCoder、洛谷、牛客、QOJ 与 LeetCode 的个人训练数据缓存到 SQLite，并用统一的 Career、时间范围统计、Activity、平台概览和难度分布展示。
+
+**本改造版同时可以作为纯 Web 多用户面板运行**（Node 后端 + 浏览器访问），适合队伍 / 小组统一管理多名选手的训练数据。
 
 ## 功能
 
@@ -12,6 +17,14 @@ OJ Insight v0.2.0 是一个 Windows / macOS 本地优先桌面面板，把 Codef
 - Activity 四种口径：First AC、Unique AC、AC Submissions、Platform Activity。
 - Platform Summary、Recent Accepted、Data Sources。
 - Difficulty Profile 按平台自身体系分别绘制 histogram，不跨 OJ 强行统一难度。
+- 做题记录导出：按时间顺序导出全部 AC 提交为 CSV 表格。
+- 账号配置批量迁移：设置页可一键复制/粘贴 JSON。
+- 多用户与管理后台：用户组 + 多用户平台绑定，前台免登录自由切换查看；全站汇总页展示全部用户最近提交。
+- 全站汇总卡片：每个用户一张卡片，按平台展示本周/上一周做题数，可切换本月、本年、总计（UTC+8 基准）。
+- 监控队列：管理后台实时展示各平台等待/运行中的同步用户（含下次计划刷新与上次成功时间），底部滚动打印最近 200 条平台请求日志。
+- 共享限流计时器：所有对 OJ 平台的出站请求经过唯一的共享计时器网关排队放行（如 Codeforces ≥2.1s、AtCoder ≥1.1s），跨用户/跨任务全局生效。
+- 自动同步：每天从 0 点开始每 4 小时刷新（含 0 点）、每个用户错开 10 分钟，均可在后台自定义。
+- 时间轴支持「至今 / 按年 / 自定义区间」三种尺度；CSV 与活动图导出均可筛选任意时间段与用户范围。
 - 增量同步、全量重建、清空单 OJ、清空所有同步数据。
 - 缓存数据与最近一次同步错误分离；同步失败不会删除旧缓存。
 - 同步进度显示完成站点数、新增记录与失败站点数。
@@ -176,10 +189,10 @@ Until now 固定为截至今天最近 365 天；自然年模式展示 1 月 1 �
 About 显示当前版本 `0.2.0`。Check for Updates 请求：
 
 ```text
-https://api.github.com/repos/Whalica/OJ_Insight/releases/latest
+https://api.github.com/repos/sam5440/OJ_Insight_Manager/releases/latest
 ```
 
-这里只检查并跳转到 GitHub Release，不自动下载安装。Repository、Report an Issue 和 Release 均从 About 打开。
+这里只检查并跳转到 GitHub Release，不自动下载安装。Repository、Report an Issue 和 Release 均从 About 打开（指向本仓库 sam5440/OJ_Insight_Manager；原仓库见文首说明）。
 
 ## 日志与故障排查
 
@@ -203,6 +216,22 @@ npm run build
 cargo check --manifest-path src-tauri/Cargo.toml
 npm run tauri build
 ```
+
+## 浏览器 Web 运行
+
+也可以不打包桌面应用，直接在浏览器里运行：
+
+```bash
+npm run web        # 构建前端并启动 Web 服务，自动打开浏览器
+npm run server     # 只启动 Web 服务（复用已有 dist/，配合 npm run dev 使用）
+```
+
+- Web 服务默认监听 `http://localhost:4310`，数据存放在 `server/data-root/`。
+- 浏览器模式下，页面会通过 `/api/*` 调用内嵌的 Node 后端（同步、存储、快照与导出与桌面版共用同一套逻辑）。
+- 管理后台：访问 `http://localhost:4310/#/admin`（默认 `admin / qwe123`，登录后可修改密码），可管理用户组、用户平台绑定、手动/自动同步与清空数据。
+- 自动同步计划默认每天 00:00 起、每 4 小时执行一次（含 00:00），同一时刻多个用户按顺序错开 10 分钟；均可在后台「同步计划」中自定义。
+- 开发模式：`npm run dev` 启动 Vite（端口 1420），并在 `vite.config.ts` 里把 `/api` 代理到后端 4310。
+- 桌面 Tauri 模式不受影响；检测到 Tauri 环境时前端仍然走 `invoke`（管理员后台与多用户功能仅 Web 模式提供）。
 
 开发模式数据位置：
 
