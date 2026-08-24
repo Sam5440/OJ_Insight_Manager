@@ -16,6 +16,9 @@
 }
 * { box-sizing: border-box; }
 html, body, #root { margin: 0; min-width: 1024px; min-height: 100vh; background: var(--bg); }
+@media (max-width: 1023px) {
+  html, body, #root { min-width: 0; }
+}
 button, input, select { font: inherit; }
 button { color: inherit; }
 a { color: inherit; text-decoration: none; }
@@ -267,7 +270,7 @@ select:focus, input:focus { border-color: #3c6d4d; box-shadow: 0 0 0 2px rgba(88
 
 /* ---- 全站汇总用户卡片 ---- */
 .sum-cards-panel { margin-bottom: 16px; }
-.sum-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 12px; }
+.sum-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(330px, 100%), 1fr)); gap: 12px; }
 .sum-card { border: 1px solid #232a33; background: #0d1116; border-radius: 11px; padding: 14px 15px 10px; }
 .sum-card > header { display: flex; align-items: center; gap: 9px; padding-bottom: 10px; border-bottom: 1px solid #1d232a; margin-bottom: 8px; }
 .sum-card > header small { color: #66717c; font-size: 10px; flex: 1; }
@@ -333,4 +336,126 @@ select:focus, input:focus { border-color: #3c6d4d; box-shadow: 0 0 0 2px rgba(88
   .two-col { grid-template-columns: 1fr; }
   .account-row { grid-template-columns: 180px 1fr; }
   .account-row > :nth-child(3) { grid-column: 2; }
+}
+
+/* ============================================================
+   移动端自适应（≤900px 手机/小屏；≤600px 紧凑；≤480px 极小屏）
+   ============================================================ */
+.mobile-topbar { display: none; }
+.sidebar-backdrop { display: none; }
+.sidebar { transition: transform .22s ease; }
+select, input, textarea { max-width: 100%; }
+
+@media (max-width: 900px) {
+  /* ---- 抽屉式侧栏 ---- */
+  .app-shell { grid-template-columns: 1fr; }
+  .sidebar {
+    position: fixed; z-index: 70; left: 0; top: 0; bottom: 0;
+    width: min(80vw, 288px);
+    transform: translateX(-102%);
+    overflow-y: auto;
+    padding-bottom: max(18px, env(safe-area-inset-bottom));
+    box-shadow: none;
+  }
+  .sidebar.open { transform: translateX(0); box-shadow: 26px 0 70px rgba(0,0,0,.5); }
+  .sidebar-backdrop { display: block; position: fixed; inset: 0; z-index: 65; background: rgba(0,0,0,.45); border: 0; cursor: pointer; padding: 0; }
+
+  /* ---- 移动端顶栏 ---- */
+  .mobile-topbar {
+    position: sticky; top: 0; z-index: 30;
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px;
+    padding-top: max(10px, env(safe-area-inset-top));
+    background: rgba(11, 14, 19, .92);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid #171c22;
+  }
+  .mobile-topbar strong { font-size: 14.5px; letter-spacing: .2px; }
+
+  .main { padding: 16px clamp(13px, 4vw, 26px) calc(48px + env(safe-area-inset-bottom)); }
+  .topbar { gap: 12px; margin-bottom: 20px; }
+  .topbar h1 { font-size: 21px; }
+  .topbar p { font-size: 11px; }
+  .topbar-actions { width: 100%; }
+
+  /* ---- 首页网格 ---- */
+  .toolbar { flex-wrap: wrap; align-items: end; row-gap: 12px; }
+  .toolbar > label { min-width: 0; }
+  .range-controls { flex-wrap: wrap; }
+  .custom-range input[type="date"] { flex: 1; min-width: 0; width: auto; }
+  .stats-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .stat-card { min-height: 92px; padding: 12px 13px; }
+  .two-col { grid-template-columns: 1fr; }
+  .platform-table > button { grid-template-columns: 12px minmax(0, 1fr) auto; }
+  .platform-table > button small { grid-column: 2 / -1; white-space: normal; }
+  .histogram { overflow-x: auto; }
+  .difficulty-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  /* ---- 数据源 / 账号绑定 ---- */
+  .source-list article { grid-template-columns: 1fr; gap: 9px; padding: 12px 0; }
+  .source-actions { justify-content: flex-start; }
+  .account-row { grid-template-columns: 1fr !important; gap: 8px; padding: 12px 2px; }
+  .account-row input { width: 100%; box-sizing: border-box; }
+  .account-row .source-state { margin: 2px 0; }
+
+  /* ---- 导出页 ---- */
+  .export-layout { grid-template-columns: 1fr; }
+  .export-preview { min-height: 240px; padding: 18px 0; }
+  .range-row input[type="date"] { width: 100%; min-width: 0; }
+
+  /* ---- 汇总列表（最近提交）---- */
+  .summary-list a { display: block; padding: 9px 2px; line-height: 1.5; }
+  .summary-list .summary-time { display: inline-block; margin-right: 8px; }
+  .summary-list .user-chip { display: inline-block; margin-right: 8px; vertical-align: 1px; }
+  .summary-list .oj-badge { display: inline-block; margin-right: 8px; vertical-align: 1px; }
+  .summary-list a > div { display: block; margin-top: 3px; min-width: 0; }
+  .summary-list a > div strong { margin-right: 6px; }
+  .summary-list a > small { display: inline-block; margin-left: 0; color: #5e6974; }
+
+  /* ---- 卡片与曲线图 ---- */
+  .sum-cards { grid-template-columns: 1fr; }
+  .sum-card > header strong { font-size: 17px; }
+
+  /* ---- 抽屉详情 ---- */
+  .drawer { width: min(430px, 100vw); }
+  .toast { left: 12px; right: 12px; transform: none; max-width: none; text-align: center; }
+
+  /* ---- 管理后台 ---- */
+  .admin-shell { padding: 20px clamp(12px, 4vw, 30px) 40px; }
+  .admin-topbar { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .admin-tabs { flex-wrap: wrap; }
+  .admin-users { grid-template-columns: 1fr; }
+  .admin-profile-row { grid-template-columns: 1fr; align-items: stretch; }
+  .admin-profile-row label input, .admin-profile-row label select { width: 100%; box-sizing: border-box; }
+  .admin-binding-row { grid-template-columns: minmax(0, 1fr); gap: 6px; padding: 10px 0; }
+  .admin-binding-row .oj-dot { display: none; }
+  .admin-binding-row strong { font-size: 12px; }
+  .admin-binding-row input { width: 100%; box-sizing: border-box; }
+  .admin-binding-row .btn-ghost { justify-self: end; }
+  .admin-group-row { grid-template-columns: minmax(0, 1fr) auto; row-gap: 8px; }
+  .admin-form-grid { grid-template-columns: 1fr 1fr; }
+  .danger-zone { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .mq-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .csv-filter { gap: 12px; }
+  .about-card { padding: 24px 16px; margin-top: 20px; }
+  .about-links { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 600px) {
+  .main { padding-left: 13px; padding-right: 13px; }
+  .topbar h1 { font-size: 19px; }
+  .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stat-card { min-height: 0; }
+  .recent-list a { grid-template-columns: 42px minmax(0, 1fr) auto; gap: 8px; }
+  .difficulty-summary { gap: 7px; }
+  .year-control select { min-width: 118px; }
+  .segmented button { padding: 8px 6px; }
+  .admin-form-grid { grid-template-columns: 1fr; }
+  .sum-card-cols { grid-template-columns: 10px minmax(64px, 1fr) 1fr 56px; }
+  .sum-card-row { grid-template-columns: 10px minmax(64px, 1fr) 1fr 56px; }
+}
+
+@media (max-width: 480px) {
+  .mq-grid { grid-template-columns: 1fr; }
+  .custom-range { width: 100%; }
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Check, ChevronDown, ChevronLeft, ChevronRight, ClipboardCopy, Download, ExternalLink, FileSpreadsheet, Github, RefreshCw, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, Check, ChevronDown, ChevronLeft, ChevronRight, ClipboardCopy, Download, ExternalLink, FileSpreadsheet, Github, Menu, RefreshCw, ShieldCheck } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import MonitorBoard from './components/MonitorBoard';
 import Heatmap from './components/Heatmap';
@@ -46,9 +46,11 @@ export default function App() {
   const [toast, setToast] = useState<string>('');
   const [dayDetail, setDayDetail] = useState<DayDetail | null>(null);
   const [dayLoading, setDayLoading] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
 
   const currentUser = users.find((u) => u.id === currentUserId) || null;
   const selectedPlatform: Platform | null = PLATFORM_ORDER.includes(page as Platform) ? page as Platform : null;
+  const changePage = (p: Page) => { setPage(p); setNavOpen(false); };
   const range = useMemo(() => scopeRange(timeKind, year, customStart, customEnd), [timeKind, year, customStart, customEnd]);
   const accountMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -124,8 +126,12 @@ export default function App() {
   };
 
   return <div className="app-shell">
-    <Sidebar page={page} onChange={setPage} users={users} groups={groups} currentUserId={currentUserId} onChangeUser={setCurrentUserId} />
+    <Sidebar page={page} onChange={changePage} users={users} groups={groups} currentUserId={currentUserId} onChangeUser={setCurrentUserId} open={navOpen} onClose={() => setNavOpen(false)} />
     <main className="main">
+      <div className="mobile-topbar">
+        <button className="icon-btn" onClick={() => setNavOpen(true)} aria-label="打开菜单"><Menu size={18} /></button>
+        <strong>OJ Insight</strong>
+      </div>
       {page === 'summary' ? <SummaryPage /> :
        page === 'monitor' ? <MonitorPage /> :
        page === 'settings' ? <SettingsPage statuses={statuses} /> :
