@@ -462,29 +462,56 @@ select, input, textarea { max-width: 100%; }
 
 .sum-ast { font-style: normal; color: #e4cb72; margin-left: 4px; font-size: 10px; cursor: help; }
 
-/* ---- 做题曲线弹出卡片 ---- */
-.trend-overlay { position: fixed; inset: 0; z-index: 90; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; padding: 18px; }
-.trend-card { width: min(1060px, 96vw); max-height: min(88vh, 900px); display: flex; flex-direction: column; border: 1px solid #2a333d; background: #0d1116; border-radius: 14px; box-shadow: 0 30px 90px rgba(0,0,0,.5); overflow: hidden; }
-.trend-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 16px 18px 12px; border-bottom: 1px solid #1d232a; }
-.trend-card-head h3 { font-size: 17px; margin: 3px 0 4px; }
+/* ---- 做题曲线弹出卡片：屏幕正中，固定占屏 75% ---- */
+.trend-overlay { position: fixed; inset: 0; z-index: 90; background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; }
+.trend-card {
+  position: relative;
+  width: 75vw; height: 75vh;              /* 严格占据屏幕 75% */
+  display: flex; flex-direction: column;
+  border: 1px solid #2a333d; background: #0d1116; border-radius: 14px;
+  box-shadow: 0 40px 110px rgba(0,0,0,.55);
+  overflow: hidden;
+}
+.trend-close { position: absolute; top: 10px; right: 10px; z-index: 3; }
+.trend-card-head {
+  text-align: center;
+  padding: 13px 52px 11px;
+  border-bottom: 1px solid #1d232a;
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+}
+.trend-card-head small { color: #68737f; letter-spacing: 1.35px; font-size: 9px; font-weight: 800; }
+.trend-card-head h3 { font-size: 17px; margin: 0; }
 .trend-card-head p { margin: 0; font-size: 10.5px; color: #66727d; }
-.trend-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(270px, 1fr); gap: 16px; padding: 14px 18px 18px; overflow-y: auto; }
-.trend-left { min-width: 0; }
-.trend-right { border-left: 1px solid #1d232a; padding-left: 16px; max-height: 64vh; overflow-y: auto; }
+.trend-toggle { margin-top: 2px; }
+.trend-grid {
+  flex: 1; min-height: 0;
+  display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(250px, 1fr);
+  gap: 16px; padding: 14px 20px 16px;
+}
+.trend-left { min-width: 0; display: flex; align-items: stretch; }
+.trend-left .chart-wrap { width: 100%; display: flex; align-items: center; }
+.trend-left svg { width: 100%; height: auto; max-height: 100%; }
+.trend-right {
+  border-left: 1px solid #1d232a; padding-left: 16px;
+  overflow-y: auto; scrollbar-width: thin;
+}
 .trend-day-head { display: flex; align-items: center; gap: 7px; color: #cfd7dd; font-size: 12px; margin-bottom: 9px; }
 .trend-day-head span { color: #66727d; font-size: 10px; margin-left: auto; }
 .chart-wrap { position: relative; }
-.chart-tip { position: absolute; top: 2px; transform: translateX(-50%); background: #10151c; border: 1px solid #2a333d; border-radius: 9px; padding: 8px 11px; font-size: 10.5px; color: #cfd7dd; display: grid; gap: 3px; pointer-events: none; box-shadow: 0 12px 30px rgba(0,0,0,.45); white-space: nowrap; z-index: 5; }
+.chart-tip {
+  position: absolute; top: 2px; transform: translateX(-50%);
+  background: #10151c; border: 1px solid #2a333d; border-radius: 9px;
+  padding: 8px 11px; font-size: 10.5px; color: #cfd7dd;
+  display: grid; gap: 3px; pointer-events: none;
+  box-shadow: 0 12px 30px rgba(0,0,0,.45); white-space: nowrap; z-index: 5;
+}
 .tip-date { font-weight: 700; color: #eef3f6; }
 .tip-total { color: #8ff0ae; font-weight: 650; }
-.tip-row { display: flex; align-items: center; gap: 6px; }
+.tip-row { display: flex; align-items: center; gap: 6px; text-align: left; }
 .tip-row b { margin-left: auto; padding-left: 10px; font-variant-numeric: tabular-nums; }
 .tip-row i { font-style: normal; color: #e4cb72; }
 .tip-hint { color: #55606b; font-size: 9px; margin-top: 2px; }
 @media (max-width: 900px) {
-  .trend-grid { grid-template-columns: 1fr; max-height: none; }
-  .trend-right { border-left: 0; padding-left: 0; border-top: 1px solid #1d232a; padding-top: 12px; max-height: 42vh; }
-  .trend-card-head { flex-direction: column; }
-  .trend-overlay { padding: 10px; }
-  .trend-card { width: 100%; max-height: 94vh; }
+  .trend-grid { grid-template-columns: 1fr; overflow-y: auto; }
+  .trend-right { border-left: 0; padding-left: 0; border-top: 1px solid #1d232a; padding-top: 12px; }
 }

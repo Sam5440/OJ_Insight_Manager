@@ -52,18 +52,14 @@ export default function TrendModal({ userId, userName, onClose }: { userId: stri
   return (
     <div className="trend-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="trend-card">
+        <button className="icon-btn trend-close" onClick={onClose} aria-label="关闭"><X size={17} /></button>
         <header className="trend-card-head">
-          <div>
-            <small>PROBLEM SOLVING TREND</small>
-            <h3>{userName} · 做题曲线</h3>
-            <p className="muted">悬停查看当日各平台去重题数，点击某天在右侧查看当日全部 AC 明细（UTC+8）。</p>
-          </div>
-          <div className="topbar-actions">
-            <div className="segmented seg-inline seg-mini">
-              <button className={days === 30 ? 'active' : ''} onClick={() => setDays(30)}>30 天</button>
-              <button className={days === 180 ? 'active' : ''} onClick={() => setDays(180)}>180 天</button>
-            </div>
-            <button className="icon-btn" onClick={onClose} aria-label="关闭"><X size={17} /></button>
+          <small>PROBLEM SOLVING TREND</small>
+          <h3>{userName} · 做题曲线</h3>
+          <p className="muted">悬停查看当日各平台去重题数 · 点击某天在右侧查看当日全部 AC 明细（UTC+8）</p>
+          <div className="segmented seg-inline seg-mini trend-toggle">
+            <button className={days === 30 ? 'active' : ''} onClick={() => setDays(30)}>30 天</button>
+            <button className={days === 180 ? 'active' : ''} onClick={() => setDays(180)}>180 天</button>
           </div>
         </header>
         {error && <div className="admin-error"><AlertTriangle size={14} />{error}</div>}
