@@ -206,6 +206,8 @@ https://api.github.com/repos/sam5440/OJ_Insight_Manager/releases/latest
 
 ## 源码开发
 
+> AI 编码代理 / 新协作者请先阅读 [AGENTS.md](AGENTS.md)——其中包含架构约定、数据模型、API 契约、踩坑记录与提交前验证清单。
+
 要求：Node.js 22+、Rust stable。
 
 - Windows：Visual Studio C++ Build Tools、WebView2 Runtime。
