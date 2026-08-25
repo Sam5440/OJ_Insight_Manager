@@ -331,13 +331,18 @@ function UserTrend({ userId }: { userId: string }) {
 function SummaryPage() {
   const [items, setItems] = useState<SummaryItem[]>([]);
   const [cards, setCards] = useState<SummaryCards | null>(null);
-  const [period, setPeriod] = useState<CardPeriod>('week');
+  // 默认周期来自管理后台设置；加载完成前先不请求 cards，避免闪两次
+  const [period, setPeriod] = useState<CardPeriod | null>(null);
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
+  useEffect(() => {
+    api.publicSettings().then((s) => setPeriod(s.summaryDefaultPeriod)).catch(() => setPeriod('week'));
+  }, []);
   // silent=true 时为后台自动刷新：不转圈、不禁用按钮，只更新数据与时间戳
   const load = useCallback(async (silent = false) => {
+    if (period == null) return;
     if (!silent) setLoading(true);
     try {
       const [rows, cardData] = await Promise.all([api.summary(300), api.cards(period)]);
@@ -346,6 +351,7 @@ function SummaryPage() {
     finally { if (!silent) setLoading(false); }
   }, [period]);
   useEffect(() => {
+    if (period == null) return;
     load();
     const timer = setInterval(() => load(true), 60000);
     return () => clearInterval(timer);

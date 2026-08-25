@@ -78,8 +78,7 @@ export const api = isTauri
         invoke<SubmissionLike[]>('get_all_submissions').then((rows) =>
           rows.slice(-limit).reverse().map((r) => ({ ...r, userId: 'local', userName: '本地账号' })),
         ),
-      cards: async (period: CardPeriod): Promise<SummaryCards> => {
-        const rows = await invoke<SubmissionLike[]>('get_all_submissions');
+      cards: async (period: CardPeriod): Promise<SummaryCards> => {        const rows = await invoke<SubmissionLike[]>('get_all_submissions');
         const today = new Date((Math.floor(Date.now() / 1000) + 8 * 3600) * 1000).toISOString().slice(0, 10);
         const addDays = (d: string, n: number) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
         const dow = new Date(`${today}T00:00:00Z`).getUTCDay();
@@ -134,6 +133,7 @@ export const api = isTauri
         });
         return { userId, userName: '本地账号', days: n, start: points[0].day, end: points[n - 1].day, points };
       },
+      publicSettings: async (): Promise<{ summaryDefaultPeriod: CardPeriod }> => ({ summaryDefaultPeriod: 'week' }),
       monitor: async (): Promise<MonitorData> => ({
         generatedAt: Date.now(),
         schedule: { enabled: false, startHour: 0, intervalHours: 4, userStaggerMinutes: 10 },
@@ -179,6 +179,9 @@ export const api = isTauri
       },
       summary: (limit: number) => req<SummaryItem[]>('GET', `/api/summary?limit=${limit}`),
       cards: (period: CardPeriod) => req<SummaryCards>('GET', `/api/cards?period=${period}`),
+      publicSettings: (): Promise<{ summaryDefaultPeriod: CardPeriod }> =>
+        req<{ summaryDefaultPeriod: CardPeriod }>('GET', '/api/public_settings')
+          .catch(() => ({ summaryDefaultPeriod: 'week' as CardPeriod })),
       userTrend: (userId: string, days: 30 | 180) =>
         req<TrendData>('GET', `/api/user_trend?${new URLSearchParams({ userId, days: String(days) })}`),
       monitor: () => req<MonitorData>('GET', '/api/monitor'),
@@ -223,8 +226,10 @@ export const adminApi = {
     adminReq<unknown>('PUT', `/api/admin/users/${userId}/accounts`, { platform, account, secret }),
   clearData: (userId: string, platform: Platform | null) =>
     adminReq<void>('POST', '/api/admin/clear', { userId, platform }),
-  saveSettings: (schedule: { enabled: boolean; startHour: number; intervalHours: number; userStaggerMinutes: number }) =>
-    adminReq<unknown>('PUT', '/api/admin/settings', { schedule }),
+  saveSettings: (payload: {
+    schedule?: { enabled: boolean; startHour: number; intervalHours: number; userStaggerMinutes: number };
+    summary?: { defaultPeriod: CardPeriod };
+  }) => adminReq<{ schedule?: unknown; summary?: unknown }>('PUT', '/api/admin/settings', payload),
   changePassword: (oldPassword: string, newPassword: string) =>
     adminReq<void>('POST', '/api/admin/password', { oldPassword, newPassword }),
   sync: (userId: string, platform: Platform | null, full: boolean) =>

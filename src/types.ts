@@ -119,7 +119,7 @@ export interface AdminOverview {
   username: string;
   groups: GroupInfo[];
   users: AdminUser[];
-  settings: { schedule: ScheduleSettings };
+  settings: { schedule: ScheduleSettings; summary: { defaultPeriod: CardPeriod } };
 }
 
 export interface RecordItem extends SubmissionItem { userName: string }

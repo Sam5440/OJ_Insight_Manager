@@ -170,6 +170,8 @@ async function handlePublic(req, res, urlPath, query, body) {
     }
     case 'GET /api/summary':
       return ok(res, store.summary(Math.min(Number(query.get('limit')) || 200, 1000)));
+    case 'GET /api/public_settings':
+      return ok(res, { summaryDefaultPeriod: store.summarySettings().defaultPeriod });
     case 'GET /api/cards':
       try {
         return ok(res, store.cards(String(query.get('period') || 'week')));
@@ -231,7 +233,7 @@ async function handleAdmin(req, res, urlPath, query, body) {
         username: store.data.auth.username,
         groups: store.listGroups(),
         users: store.listUsers().map((u) => store.adminUser(u)),
-        settings: { schedule: store.scheduleSettings() },
+        settings: { schedule: store.scheduleSettings(), summary: store.summarySettings() },
       });
     default:
       break;
@@ -265,7 +267,10 @@ async function handleAdmin(req, res, urlPath, query, body) {
       return ok(res, null);
     }
     if (req.method === 'PUT' && urlPath === '/api/admin/settings') {
-      return ok(res, store.setScheduleSettings(body.schedule || {}));
+      const out = {};
+      if (body.schedule) out.schedule = store.setScheduleSettings(body.schedule);
+      if (body.summary) out.summary = store.setSummarySettings(body.summary);
+      return ok(res, out);
     }
     if (req.method === 'POST' && urlPath === '/api/admin/password') {
       store.changePassword(String(body.oldPassword || ''), String(body.newPassword || ''));

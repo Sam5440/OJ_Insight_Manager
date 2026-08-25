@@ -89,7 +89,7 @@ function Panel({ onLogout }: { onLogout: () => void }) {
       {!overview && !error && <div className="loading-block">读取中…</div>}
       {overview && tab === 'users' && <UsersTab overview={overview} reload={reload} />}
       {overview && tab === 'groups' && <GroupsTab overview={overview} reload={reload} />}
-      {overview && tab === 'schedule' && <ScheduleTab schedule={overview.settings.schedule} reload={reload} />}
+      {overview && tab === 'schedule' && <ScheduleTab settings={overview.settings} reload={reload} />}
       {tab === 'monitor' && <MonitorTab />}
       {overview && tab === 'security' && <SecurityTab username={overview.username} onLogout={onLogout} />}
       {overview && <p className="muted admin-foot">当前登录：{overview.username} · 用户 {overview.users.length} 个 / 分组 {overview.groups.length} 个</p>}
@@ -344,8 +344,16 @@ function slotPreview(schedule: ScheduleSettings, userNames: string[], count = 4)
   return cands.filter((t) => t > now).slice(0, count).map((t) => ({ at: new Date(t), users: userNames.slice(0, 3) }));
 }
 
-function ScheduleTab({ schedule, reload }: { schedule: ScheduleSettings; reload: () => Promise<void> }) {
-  const [form, setForm] = useState<ScheduleSettings>(schedule);
+const PERIOD_OPTIONS: Array<{ value: 'week' | 'month' | 'year' | 'total'; label: string }> = [
+  { value: 'week', label: '本周' },
+  { value: 'month', label: '本月' },
+  { value: 'year', label: '本年' },
+  { value: 'total', label: '总计' },
+];
+
+function ScheduleTab({ settings, reload }: { settings: AdminOverview['settings']; reload: () => Promise<void> }) {
+  const [form, setForm] = useState<ScheduleSettings>(settings.schedule);
+  const [defaultPeriod, setDefaultPeriod] = useState(settings.summary?.defaultPeriod || 'week');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const preview = useMemo(
@@ -354,7 +362,11 @@ function ScheduleTab({ schedule, reload }: { schedule: ScheduleSettings; reload:
   );
   const save = async () => {
     setBusy(true); setMsg('');
-    try { await adminApi.saveSettings(form); setMsg('已保存，调度器立即按新计划执行。'); await reload(); }
+    try {
+      await adminApi.saveSettings({ schedule: form, summary: { defaultPeriod } });
+      setMsg('已保存：同步计划立即生效，全站汇总默认周期已更新。');
+      await reload();
+    }
     catch (e) { setMsg(errText(e)); }
     finally { setBusy(false); }
   };
@@ -387,8 +399,14 @@ function ScheduleTab({ schedule, reload }: { schedule: ScheduleSettings; reload:
         </ul>
         <small className="muted">默认配置即需求值：从 0 点开始、每 4 小时（00:00 / 04:00 / …）、每个用户间隔 10 分钟。以上示例用户名仅作演示。</small>
       </div>
+      <div className="panel-head" style={{ marginTop: 18 }}><div><small>SUMMARY DEFAULT PERIOD</small><h2>全站汇总默认周期</h2><p>前台「全站汇总」页面首次进入与刷新时默认选中的统计周期。</p></div></div>
+      <div className="segmented seg-inline" style={{ width: 'max-content' }}>
+        {PERIOD_OPTIONS.map((p) => (
+          <button key={p.value} className={defaultPeriod === p.value ? 'active' : ''} onClick={() => setDefaultPeriod(p.value)}>{p.label}</button>
+        ))}
+      </div>
       <div className="csv-actions">
-        <button className="primary" onClick={save} disabled={busy}><Save size={15} />{busy ? '保存中…' : '保存计划'}</button>
+        <button className="primary" onClick={save} disabled={busy}><Save size={15} />{busy ? '保存中…' : '保存全部设置'}</button>
         {msg && <span className={`account-json-msg${msg.includes('已保存') ? '' : ' error'}`}>{msg}</span>}
       </div>
     </section>

@@ -63,6 +63,10 @@ export class Store {
     if (!d.syncState) d.syncState = {};
     if (!d.settings) d.settings = {};
     if (!d.settings.schedule) d.settings.schedule = { ...DEFAULT_SCHEDULE };
+    const VALID_PERIODS = ['week', 'month', 'year', 'total'];
+    if (!VALID_PERIODS.includes(d.settings.summary?.defaultPeriod)) {
+      d.settings.summary = { defaultPeriod: 'week' };
+    }
     if (!d.auth) d.auth = null;
 
     // v1 → v2 迁移：把全局单账号结构迁移为「默认分组 + 默认用户」。
@@ -898,6 +902,20 @@ export class Store {
 
   scheduleSettings() {
     return { ...DEFAULT_SCHEDULE, ...(this.data.settings.schedule || {}) };
+  }
+
+  summarySettings() {
+    const p = this.data.settings.summary?.defaultPeriod;
+    return { defaultPeriod: ['week', 'month', 'year', 'total'].includes(p) ? p : 'week' };
+  }
+
+  setSummarySettings(summary) {
+    const p = String(summary?.defaultPeriod || '');
+    this.data.settings.summary = {
+      defaultPeriod: ['week', 'month', 'year', 'total'].includes(p) ? p : 'week',
+    };
+    this.persist();
+    return this.summarySettings();
   }
 
   setScheduleSettings(schedule) {
