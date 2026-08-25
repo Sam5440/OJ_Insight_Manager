@@ -443,6 +443,20 @@ export class Store {
     }
     if (!remote.activityOnly) this._recomputeRawDaily(userId, remote.platform);
 
+    // 记录每道题「首次发现日期」：首次扫描时全部默认为本次扫描日期；
+    // 之后扫描新出现的题目以发现当日为准（可用于增量识别新题）。
+    if (Array.isArray(remote.discoveredProblems) && remote.discoveredProblems.length > 0) {
+      const key = `${userId}:${remote.platform}:first_seen`;
+      let map = {};
+      try { map = JSON.parse(this._getStat(key, 'map') || '{}'); } catch { map = {}; }
+      const today = dayUtc8(nowEpoch());
+      for (const pid of remote.discoveredProblems) {
+        if (!(pid in map)) map[pid] = today;
+      }
+      this._setStat(key, 'map', JSON.stringify(map));
+      this._setStat(key, 'count', String(Object.keys(map).length));
+    }
+
     const warning = (remote.notes || []).find((n) => n.startsWith('警告：'));
     const base = `同步成功 · 新增 ${inserted}，更新 ${updated}`;
     this.markOk(userId, remote.platform, remote.account, warning ? `${base} · ${warning}` : base, remote.cursorEpoch);
@@ -651,23 +665,62 @@ export class Store {
     return { period, label, curLabel, prevLabel, generatedAt: nowEpoch(), ranges: { cur: curRange, prev: prevRange }, cards };
   }
 
-  /** 用户最近 N 天的每日做题数量曲线（activity 口径，UTC+8） */
+  /** 用户最近 N 天的每日做题曲线：总数 + 分平台唯一 AC 题数（洛谷等活动量平台标记 approx） */
   userTrend(userId, days = 30) {
     const user = this.getUser(userId);
     const n = Number(days) === 180 ? 180 : 30;
-    const map = {};
+    const today = todayUtc8();
     const start = dayUtc8(nowEpoch() - (n - 1) * 86400);
-    for (const c of this.data.dailyCounts) {
-      if (c.userId === userId && c.metric === 'activity' && c.day >= start) {
-        map[c.day] = (map[c.day] || 0) + c.count;
-      }
+    const startTs = dayStartEpoch(start);
+    const endTs = dayEndEpoch(today);
+
+    // 各平台是否为「仅活动量」口径
+    const approxPlatform = {};
+    for (const p of PLATFORMS) {
+      approxPlatform[p] =
+        this._platformActivityOnly(`${userId}:${p}`) ||
+        (!this.data.submissions.some((s) => s.userId === userId && s.platform === p) &&
+          !!this.data.dailyCounts.some((c) => c.userId === userId && c.platform === p));
     }
+
+    // 提交类平台：按天按平台唯一题目数
+    const seen = new Map(); // `${day}\0${platform}` -> Set(problem_key)
+    for (const s of this.data.submissions) {
+      if (s.userId !== userId || s.epoch_second < startTs || s.epoch_second > endTs) continue;
+      if (approxPlatform[s.platform]) continue;
+      const day = dayUtc8(s.epoch_second);
+      const key = `${day}\0${s.platform}`;
+      let set = seen.get(key);
+      if (!set) { set = new Set(); seen.set(key, set); }
+      set.add(s.problem_key);
+    }
+
+    // 活动量平台：dailyCounts(activity) 按天求和
+    const act = {};
+    for (const c of this.data.dailyCounts) {
+      if (c.userId !== userId || c.metric !== 'activity' || c.day < start || c.day > today) continue;
+      if (!approxPlatform[c.platform]) continue;
+      act[`${c.day}\0${c.platform}`] = (act[`${c.day}\0${c.platform}`] || 0) + c.count;
+    }
+
     const points = [];
     for (let i = n - 1; i >= 0; i--) {
-      const d = dayUtc8(nowEpoch() - i * 86400);
-      points.push({ day: d, count: map[d] || 0 });
+      const day = dayUtc8(nowEpoch() - i * 86400);
+      const by = {};
+      let total = 0;
+      for (const p of PLATFORMS) {
+        let v = 0;
+        if (approxPlatform[p]) v = act[`${day}\0${p}`] || 0;
+        else {
+          const set = seen.get(`${day}\0${p}`);
+          v = set ? set.size : 0;
+        }
+        by[p] = { n: v, approx: !!approxPlatform[p] && v > 0 };
+        total += v;
+      }
+      points.push({ day, count: total, by });
     }
-    return { userId, userName: user.name, days: n, start, end: dayUtc8(nowEpoch()), points };
+    return { userId, userName: user.name, days: n, start, end: today, points };
   }
 
   _platformActivityOnly(key) {

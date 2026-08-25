@@ -131,11 +131,10 @@ export const api = isTauri
         }
         const points = Array.from({ length: n }, (_, i) => {
           const d = new Date((Math.floor(Date.now() / 1000) - (n - 1 - i) * 86400 + 8 * 3600) * 1000).toISOString().slice(0, 10);
-          return { day: d, count: map[d] || 0 };
+          return { day: d, count: map[d] || 0, by: {} };
         });
         return { userId, userName: '本地账号', days: n, start: points[0].day, end: points[n - 1].day, points };
-      },
-      publicSettings: async (): Promise<{ summaryDefaultPeriod: CardPeriod }> => ({ summaryDefaultPeriod: 'week' }),
+      },      publicSettings: async (): Promise<{ summaryDefaultPeriod: CardPeriod }> => ({ summaryDefaultPeriod: 'week' }),
       monitor: async (): Promise<MonitorData> => ({
         generatedAt: Date.now(),
         schedule: { enabled: false, startHour: 0, intervalHours: 4, userStaggerMinutes: 10 },

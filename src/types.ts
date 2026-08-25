@@ -143,13 +143,19 @@ export interface SummaryCards {
   }>;
 }
 
+export interface TrendPoint {
+  day: string;
+  count: number;
+  by: Partial<Record<Platform, { n: number; approx: boolean }>>;
+}
+
 export interface TrendData {
   userId: string;
   userName: string;
   days: number;
   start: string;
   end: string;
-  points: Array<{ day: string; count: number }>;
+  points: TrendPoint[];
 }
 
 export interface GateHostStat {

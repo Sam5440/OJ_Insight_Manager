@@ -1,4 +1,4 @@
-import { sleep, nowEpoch, host, dayUtc8 } from './util.mjs';
+import { sleep, nowEpoch, host, dayUtc8, dayEndEpoch } from './util.mjs';
 import { gate } from './gate.mjs';
 
 export class SyncError extends Error {
@@ -104,9 +104,10 @@ function submission(platform, submissionId, problemKey, problemId, problemName, 
   return { platform, submissionId, problemKey, problemId, problemName, problemUrl, epochSecond, language, difficulty };
 }
 
-function remote(platform, account, submissions, aggregates, solvedCount, difficulty, activityOnly, notes, cursorEpoch, replaceSubmissions, replaceAggregates) {
+function remote(platform, account, submissions, aggregates, solvedCount, difficulty, activityOnly, notes, cursorEpoch, replaceSubmissions, replaceAggregates, discoveredProblems) {
   return {
     platform, account, submissions, aggregates, solvedCount, difficulty, activityOnly, notes, cursorEpoch, replaceSubmissions, replaceAggregates,
+    discoveredProblems: discoveredProblems || null,
   };
 }
 
@@ -348,6 +349,7 @@ async function fetchLuogu(account) {
   }
   let solvedCount = null;
   let difficulty = [];
+  const discoveredProblems = [];
   try {
     const practiceText = await getText(
       `https://www.luogu.com.cn/user/${uid}/practice`,
@@ -359,6 +361,10 @@ async function fetchLuogu(account) {
       solvedCount = pd.passed.length;
       const buckets = [0, 0, 0, 0, 0, 0, 0, 0];
       for (const p of pd.passed) {
+        // 记录每道已通过题目的标识：首次扫描时全部默认「首次发现日期 = 本次扫描日期」，
+        // 之后增量对比即可知道哪些是新增题目。
+        const pid = p.pid ?? p.problemId ?? p.id ?? p.slug;
+        if (pid != null) discoveredProblems.push(String(pid));
         const d = p.difficulty;
         if (typeof d === 'number' && d >= 0 && d < 8) buckets[d] += 1;
       }
@@ -368,9 +374,28 @@ async function fetchLuogu(account) {
       }
     }
   } catch { /* optional */ }
-  return remote('luogu', display, [], aggregates, solvedCount, difficulty, true,
-    [`洛谷个人页热度图 · UID ${uid}`, 'record/list 匿名访问容易触发限制，因此 Activity 使用 dailyCounts'],
-    nowEpoch(), true, true);
+
+  // 洛谷公开接口不提供每道题的历史提交时间，因此按天回填一条「汇总提交」：
+  // 时间固定为当天 23:59:59（UTC+8），仅表示当日题量合计，不代表真实提交时间；
+  // 具体题目因平台限制无法获得，写入说明文案。
+  const DISCLAIMER = '23:59 仅为当日汇总提交时间，不代表洛谷正式提交日期';
+  const submissions = aggregates.map((a) =>
+    submission(
+      'luogu',
+      `lg-${a.day}`,
+      `luogu-${a.day}`,
+      `luogu-${a.day}`,
+      `当日 AC 合计 ${a.count} 题 · 因为平台限制无法获得具体题目信息（${DISCLAIMER}）`,
+      '',
+      dayEndEpoch(a.day),
+      '',
+      null
+    )
+  );
+
+  return remote('luogu', display, submissions, aggregates, solvedCount, difficulty, true,
+    [`洛谷个人页热度图 · UID ${uid}`, 'record/list 匿名访问容易触发限制，因此 Activity 使用 dailyCounts', DISCLAIMER],
+    nowEpoch(), true, true, discoveredProblems);
 }
 
 // ---------------------------------------------------------------------------

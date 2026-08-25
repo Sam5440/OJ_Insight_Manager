@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Check, ChevronDown, ChevronLeft, ChevronRight, ClipboardCopy, Download, ExternalLink, FileSpreadsheet, Github, Menu, RefreshCw, ShieldCheck } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import MonitorBoard from './components/MonitorBoard';
+import TrendModal from './components/TrendModal';
 import Heatmap from './components/Heatmap';
 import StatCards from './components/StatCards';
 import DayDrawer from './components/DayDrawer';
@@ -264,76 +265,12 @@ function rangeLine(cards: SummaryCards): string {
   return `${parts.join(' · ')} · 基准 UTC+8`;
 }
 
-/** 轻量 SVG 面积折线图（无第三方依赖） */
-function TrendChart({ points }: { points: Array<{ day: string; count: number }> }) {
-  const W = 620; const H = 170;
-  const pad = { l: 34, r: 10, t: 12, b: 22 };
-  const max = Math.max(1, ...points.map((p) => p.count));
-  const iw = W - pad.l - pad.r;
-  const ih = H - pad.t - pad.b;
-  const x = (i: number) => pad.l + (points.length <= 1 ? iw / 2 : (i * iw) / (points.length - 1));
-  const y = (v: number) => pad.t + (1 - v / max) * ih;
-  const line = points.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.count).toFixed(1)}`).join(' ');
-  const area = `${line} L${x(points.length - 1).toFixed(1)},${(pad.t + ih).toFixed(1)} L${x(0).toFixed(1)},${(pad.t + ih).toFixed(1)} Z`;
-  const ticks = [0, Math.floor(points.length / 2), points.length - 1];
-  const dotEvery = points.length > 60 ? 7 : points.length > 40 ? 3 : 1;
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="trend-svg">
-      <line x1={pad.l} y1={pad.t + ih} x2={W - pad.r} y2={pad.t + ih} stroke="#232b34" />
-      <line x1={pad.l} y1={pad.t} x2={pad.l} y2={pad.t + ih} stroke="#232b34" />
-      <text x={4} y={pad.t + 8} fill="#5f6a75" fontSize="9">{max}</text>
-      <text x={4} y={pad.t + ih} fill="#5f6a75" fontSize="9">0</text>
-      <path d={area} fill="rgba(88,210,129,.12)" />
-      <path d={line} fill="none" stroke="#58d281" strokeWidth="1.6" />
-      {points.map((p, i) => (
-        i % dotEvery === 0 && (
-          <circle key={p.day} cx={x(i)} cy={y(p.count)} r="2.4" fill="#58d281">
-            <title>{`${p.day}（${wd(p.day)}）：${p.count}`}</title>
-          </circle>
-        )
-      ))}
-      {ticks.map((i) => (
-        <text key={i} x={x(i)} y={H - 6} fill="#5f6a75" fontSize="9" textAnchor={i === 0 ? 'start' : i === points.length - 1 ? 'end' : 'middle'}>
-          {points[i]?.day.slice(5)}
-        </text>
-      ))}
-    </svg>
-  );
-}
-
-function UserTrend({ userId }: { userId: string }) {
-  const [days, setDays] = useState<30 | 180>(30);
-  const [data, setData] = useState<TrendData | null>(null);
-  const [error, setError] = useState('');
-  useEffect(() => {
-    let alive = true;
-    api.userTrend(userId, days)
-      .then((d) => { if (alive) { setData(d); setError(''); } })
-      .catch((e) => { if (alive) setError(String(e)); });
-    return () => { alive = false; };
-  }, [userId, days]);
-  const total = data?.points.reduce((a, p) => a + p.count, 0) ?? 0;
-  return (
-    <div className="trend-box">
-      <div className="trend-head">
-        <small>{data ? `${data.start} ~ ${data.end} · 合计 ${total.toLocaleString()} 次` : ''}</small>
-        <div className="segmented seg-inline seg-mini">
-          <button className={days === 30 ? 'active' : ''} onClick={() => setDays(30)}>30 天</button>
-          <button className={days === 180 ? 'active' : ''} onClick={() => setDays(180)}>180 天</button>
-        </div>
-      </div>
-      {error && <div className="admin-error"><AlertTriangle size={13} />{error}</div>}
-      {data && <TrendChart points={data.points} />}
-    </div>
-  );
-}
-
 function SummaryPage() {
   const [items, setItems] = useState<SummaryItem[]>([]);
   const [cards, setCards] = useState<SummaryCards | null>(null);
   // 默认周期来自管理后台设置；加载完成前先不请求 cards，避免闪两次
   const [period, setPeriod] = useState<CardPeriod | null>(null);
-  const [expandedUser, setExpandedUser] = useState<string | null>(null);
+  const [trendUser, setTrendUser] = useState<{ id: string; name: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
@@ -366,48 +303,43 @@ function SummaryPage() {
       <div><small>ALL USERS · RECENT</small><h1>全站汇总</h1><p>全部用户做题卡片与最近提交记录，每分钟自动刷新{updatedAt ? ` · 上次更新 ${new Date(updatedAt).toLocaleTimeString('zh-CN', { hour12: false })}` : ''}。</p></div>
       <div className="topbar-actions">
         <div className="segmented seg-inline">{PERIODS.map((p) => <button key={p.value} className={period === p.value ? 'active' : ''} onClick={() => setPeriod(p.value)}>{p.label}</button>)}</div>
-        <button className="primary" onClick={() => load()} disabled={loading}><RefreshCw size={16} className={loading ? 'spin' : ''} />刷新</button>
+        <button className="primary" onClick={() => load()} disabled={loading || period == null}><RefreshCw size={16} className={loading ? 'spin' : ''} />刷新</button>
       </div>
     </header>
     {error && <div className="warning"><AlertTriangle size={16} />{error}</div>}
     <section className="panel sum-cards-panel">
-      <div className="panel-head"><div><small>PER-USER CARDS</small><h2>用户做题卡片{cards ? ` · ${cards.label}` : ''}</h2><p>{cards ? rangeLine(cards) : ''} · 统计唯一 AC 题数（同一题目多次 AC 仅计一次）· 点击卡片可展开最近 30 / 180 天做题曲线</p></div></div>
+      <div className="panel-head"><div><small>PER-USER CARDS</small><h2>用户做题卡片{cards ? ` · ${cards.label}` : ''}</h2><p>{cards ? rangeLine(cards) : ''} · 统计唯一 AC 题数（同一题目多次 AC 仅计一次）· 点击卡片可弹出 30 / 180 天做题曲线与当日明细</p></div></div>
       {!cards?.cards.length && !loading && <div className="empty">还没有用户。管理员在后台创建用户并同步后即可查看。</div>}
       <div className="sum-cards">
-        {cards?.cards.map((c) => {
-          const expanded = expandedUser === c.userId;
-          return (
-            <article className={`sum-card${expanded ? ' expanded' : ''}`} key={c.userId}>
-              <header className="sum-card-head" onClick={() => setExpandedUser(expanded ? null : c.userId)} title={expanded ? '收起曲线图' : '展开最近 30 / 180 天做题曲线'}>
-                <span className="user-chip" style={{ borderColor: userColor(c.userId), color: userColor(c.userId) }}>{c.userName}</span>
-                <small>{c.groupName}{expanded ? ' · 点击收起' : ' · 点击展开'}</small>
-                <strong>{c.totalCur.toLocaleString()}<small>{period === 'total' ? ' 总计' : ` ${cards.curLabel}`}</small></strong>
-              </header>
-              <div className="sum-card-cols">
-                <span />
-                <span className="sum-pname" />
-                <span className="sum-cur sum-colhead">{cards.curLabel}</span>
-                <span className="sum-prev sum-colhead">{cards.prevLabel ?? ''}</span>
-              </div>
-              <div className="sum-card-rows">
+        {cards?.cards.map((c) => (
+          <article className="sum-card" key={c.userId}>
+            <header className="sum-card-head" onClick={() => setTrendUser({ id: c.userId, name: c.userName })} title="点击查看 30 / 180 天做题曲线与当日明细">
+              <span className="user-chip" style={{ borderColor: userColor(c.userId), color: userColor(c.userId) }}>{c.userName}</span>
+              <small>{c.groupName} · 点击展开曲线</small>
+              <strong>{c.totalCur.toLocaleString()}<small>{period === 'total' ? ' 总计' : ` ${cards.curLabel}`}</small></strong>
+            </header>
+            <div className="sum-card-cols">
+              <span />
+              <span className="sum-pname" />
+              <span className="sum-cur sum-colhead">{cards.curLabel}</span>
+              <span className="sum-prev sum-colhead">{cards.prevLabel ?? ''}</span>
+            </div>
+            <div className="sum-card-rows">
               {PLATFORM_ORDER.map((p) => {
                 const cell = c.cells[p];
                 if (!cell) return null;
-                const isActivity = cell.approx === true;
                 return (
                   <div className={`sum-card-row${cell.cur > 0 || cell.prev > 0 ? '' : ' zero'}`} key={p}>
                     <span className="oj-dot" style={{ background: PLATFORM_META[p].accent }} />
-                    <span className="sum-pname">{PLATFORM_META[p].name}{isActivity && <em className="sum-ast" title="该平台仅有活动量数据，无法按题目去重">＊</em>}</span>
+                    <span className="sum-pname">{PLATFORM_META[p].name}{cell.approx && <em className="sum-ast" title="该平台仅有活动量数据，此数值为平台活动量而非去重题数">＊</em>}</span>
                     <span className="sum-cur">{cell.cur.toLocaleString()}</span>
                     <span className="sum-prev">{period === 'total' ? '' : cell.prev.toLocaleString()}</span>
                   </div>
                 );
               })}
-              </div>
-              {expanded && <UserTrend userId={c.userId} />}
-            </article>
-          );
-        })}
+            </div>
+          </article>
+        ))}
       </div>
     </section>
     <section className="panel">
@@ -425,13 +357,7 @@ function SummaryPage() {
         ))}
       </div>
     </section>
-  </>;
-}
-
-function MonitorPage() {
-  return <>
-    <header className="topbar"><div><small>QUEUE MONITOR</small><h1>监控队列</h1><p>实时查看各平台同步队列与全部出站请求日志，每 2 秒自动刷新。</p></div></header>
-    <MonitorBoard />
+    {trendUser && <TrendModal userId={trendUser.id} userName={trendUser.name} onClose={() => setTrendUser(null)} />}
   </>;
 }
 
@@ -442,6 +368,13 @@ function AdminRequired() {
     <p>导出、数据源、账号绑定与关于页面需要登录管理员账号后使用。</p>
     <a className="primary" href="#/admin"><ShieldCheck size={15} />前往管理后台登录</a>
   </section>;
+}
+
+function MonitorPage() {
+  return <>
+    <header className="topbar"><div><small>QUEUE MONITOR</small><h1>监控队列</h1><p>实时查看各平台同步队列与全部出站请求日志，每 2 秒自动刷新。</p></div></header>
+    <MonitorBoard />
+  </>;
 }
 
 function syncStatusLabel(status?: string) {
