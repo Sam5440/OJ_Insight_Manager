@@ -534,13 +534,19 @@ export class Store {
 
   // ---------------------------------------------------------------- 周期卡片
 
-  _countInRange(userId, platform, startDay, endDay) {
-    const startTs = dayStartEpoch(startDay);
-    const endTs = dayEndEpoch(endDay);
-    if (startTs === null || endTs === null) return 0;
-    return this.data.submissions.filter(
-      (s) => s.userId === userId && s.platform === platform && s.epoch_second >= startTs && s.epoch_second <= endTs
-    ).length;
+  /** 周期内「唯一 AC 题数」：同一 problem_key 多次 AC 仅计一次 */
+  _countUniqueInRange(userId, platform, startDay, endDay) {
+    const seen = new Set();
+    let hasRange = !!(startDay && endDay);
+    const startTs = hasRange ? dayStartEpoch(startDay) : null;
+    const endTs = hasRange ? dayEndEpoch(endDay) : null;
+    if (hasRange && (startTs === null || endTs === null)) return 0;
+    for (const s of this.data.submissions) {
+      if (s.userId !== userId || s.platform !== platform) continue;
+      if (hasRange && (s.epoch_second < startTs || s.epoch_second > endTs)) continue;
+      seen.add(s.problem_key);
+    }
+    return seen.size;
   }
 
   _activitySumInRange(userId, platform, startDay, endDay) {
@@ -624,10 +630,11 @@ export class Store {
           cur = curRange ? this._activitySumInRange(u.id, p, curRange[0], curRange[1]) : this._activitySumInRange(u.id, p, null, null);
           prev = prevRange ? this._activitySumInRange(u.id, p, prevRange[0], prevRange[1]) : 0;
         } else {
-          cur = curRange ? this._countInRange(u.id, p, curRange[0], curRange[1]) : this.data.submissions.filter((s) => s.userId === u.id && s.platform === p).length;
-          prev = prevRange ? this._countInRange(u.id, p, prevRange[0], prevRange[1]) : 0;
+          // 按题目去重：同一题在周期内多次 AC 仅计一次
+          cur = this._countUniqueInRange(u.id, p, curRange?.[0] ?? null, curRange?.[1] ?? null);
+          prev = prevRange ? this._countUniqueInRange(u.id, p, prevRange[0], prevRange[1]) : 0;
         }
-        cells[p] = { cur, prev };
+        cells[p] = { cur, prev, approx: useActivity };
         totalCur += cur;
         if (period !== 'total') totalPrev += prev;
       }

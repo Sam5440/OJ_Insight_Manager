@@ -137,7 +137,7 @@ export interface SummaryCards {
     userId: string;
     userName: string;
     groupName: string;
-    cells: Record<Platform, { cur: number; prev: number }>;
+    cells: Record<Platform, { cur: number; prev: number; approx?: boolean }>;
     totalCur: number;
     totalPrev: number;
   }>;

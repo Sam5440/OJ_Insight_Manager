@@ -66,13 +66,15 @@ async function syncOne(userId, platform, full, tag = '') {
 const scheduler = new Scheduler(store, (userId, platform, full, tag) => syncOne(userId, platform, full, tag));
 scheduler.start();
 
+const NO_STORE = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' };
+
 const ok = (res, data) => {
-  res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+  res.writeHead(200, NO_STORE);
   res.end(JSON.stringify(data === undefined ? null : data));
 };
 
 const fail = (res, status, message) => {
-  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' });
+  res.writeHead(status, NO_STORE);
   res.end(JSON.stringify({ error: message }));
 };
 

@@ -371,7 +371,7 @@ function SummaryPage() {
     </header>
     {error && <div className="warning"><AlertTriangle size={16} />{error}</div>}
     <section className="panel sum-cards-panel">
-      <div className="panel-head"><div><small>PER-USER CARDS</small><h2>用户做题卡片{cards ? ` · ${cards.label}` : ''}</h2><p>{cards ? rangeLine(cards) : ''} · 点击卡片可展开最近 30 / 180 天做题曲线</p></div></div>
+      <div className="panel-head"><div><small>PER-USER CARDS</small><h2>用户做题卡片{cards ? ` · ${cards.label}` : ''}</h2><p>{cards ? rangeLine(cards) : ''} · 统计唯一 AC 题数（同一题目多次 AC 仅计一次）· 点击卡片可展开最近 30 / 180 天做题曲线</p></div></div>
       {!cards?.cards.length && !loading && <div className="empty">还没有用户。管理员在后台创建用户并同步后即可查看。</div>}
       <div className="sum-cards">
         {cards?.cards.map((c) => {
@@ -390,18 +390,19 @@ function SummaryPage() {
                 <span className="sum-prev sum-colhead">{cards.prevLabel ?? ''}</span>
               </div>
               <div className="sum-card-rows">
-                {PLATFORM_ORDER.map((p) => {
-                  const cell = c.cells[p];
-                  if (!cell) return null;
-                  return (
-                    <div className={`sum-card-row${cell.cur > 0 || cell.prev > 0 ? '' : ' zero'}`} key={p}>
-                      <span className="oj-dot" style={{ background: PLATFORM_META[p].accent }} />
-                      <span className="sum-pname">{PLATFORM_META[p].name}</span>
-                      <span className="sum-cur">{cell.cur.toLocaleString()}</span>
-                      <span className="sum-prev">{period === 'total' ? '' : cell.prev.toLocaleString()}</span>
-                    </div>
-                  );
-                })}
+              {PLATFORM_ORDER.map((p) => {
+                const cell = c.cells[p];
+                if (!cell) return null;
+                const isActivity = cell.approx === true;
+                return (
+                  <div className={`sum-card-row${cell.cur > 0 || cell.prev > 0 ? '' : ' zero'}`} key={p}>
+                    <span className="oj-dot" style={{ background: PLATFORM_META[p].accent }} />
+                    <span className="sum-pname">{PLATFORM_META[p].name}{isActivity && <em className="sum-ast" title="该平台仅有活动量数据，无法按题目去重">＊</em>}</span>
+                    <span className="sum-cur">{cell.cur.toLocaleString()}</span>
+                    <span className="sum-prev">{period === 'total' ? '' : cell.prev.toLocaleString()}</span>
+                  </div>
+                );
+              })}
               </div>
               {expanded && <UserTrend userId={c.userId} />}
             </article>

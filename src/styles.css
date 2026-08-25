@@ -459,3 +459,5 @@ select, input, textarea { max-width: 100%; }
   .mq-grid { grid-template-columns: 1fr; }
   .custom-range { width: 100%; }
 }
+
+.sum-ast { font-style: normal; color: #e4cb72; margin-left: 4px; font-size: 10px; cursor: help; }
